@@ -24,9 +24,11 @@ from equityrt_api_client import EquityRTClient
 client = EquityRTClient()
 token = client.authenticate(username="email@email.com", password="YOUR_PASSWORD")
 
+# Echo - simple test method to check connectivity and token validity
 echo_result = client.echo(version="2.6.5.471", echo=402710)
 print(echo_result)
 
+# Get add-in information (e.g. available functions and parameters)
 addin_result = client.add_in(version="2.6.5.471")
 print(addin_result)
 ```
@@ -47,7 +49,7 @@ print(addin_result)
 
 ---
 
-## Webstation Examples
+## Usage Examples
 
 ### Get add-in information (e.g. available functions and parameters)
 
