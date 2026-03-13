@@ -17,7 +17,8 @@ class FunctionCall:
         ]
         '''
         formatted_args = []
-        for value in self.args.values():
+        arg_values = self.args.values() if isinstance(self.args, dict) else self.args
+        for value in arg_values:
             if isinstance(value, str):
                 formatted_args.append({"S": str(value)})
             elif isinstance(value, (int, float)):
