@@ -37,6 +37,7 @@ class EquityRTClient(FunctionWrapper):
         self.base_urls = [url.rstrip("/") for url in base_urls]
         if not self.base_urls:
             raise ValueError("base_urls cannot be empty")
+        self._last_used_base_url_index = -1
         self.timeout = timeout
         self.user_agent = user_agent
 
@@ -242,7 +243,11 @@ class EquityRTClient(FunctionWrapper):
 
         body = json.dumps(payload).encode("utf-8")
 
-        for base_url in self.base_urls:
+        start_index = (self._last_used_base_url_index + 1) % len(self.base_urls)
+
+        for offset in range(len(self.base_urls)):
+            index = (start_index + offset) % len(self.base_urls)
+            base_url = self.base_urls[index]
             url = f"{base_url}{path}"
             req = request.Request(url=url, data=body, headers=headers, method="POST")
 
@@ -250,6 +255,7 @@ class EquityRTClient(FunctionWrapper):
                 with request.urlopen(req, timeout=self.timeout) as response:
                     content_type = response.headers.get("Content-Type", "")
                     data = response.read()
+                    self._last_used_base_url_index = index
                     return self._parse_response(data, content_type)
             except error.HTTPError as exc:
                 detail = self._decode_response_body(exc.read())
@@ -260,6 +266,8 @@ class EquityRTClient(FunctionWrapper):
                 attempt_errors.append(AttemptError(base_url, f"Connection error: {exc.reason}"))
             except TimeoutError:
                 attempt_errors.append(AttemptError(base_url, "Timeout"))
+
+            print(f"Request to {base_url} failed: {attempt_errors[-1].message}")  # Debug log
 
         reasons = " | ".join(f"{e.base_url}: {e.message}" for e in attempt_errors)
         raise EquityRTApiError(f"All datagates failed for {path}. {reasons}")
