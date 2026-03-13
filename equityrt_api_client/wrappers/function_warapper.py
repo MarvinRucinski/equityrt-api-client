@@ -34,7 +34,6 @@ class FunctionCall:
     def from_excel_function(cls, client, excel_func_str: str):
         excel_func_str = excel_func_str.lstrip('=').lstrip('+').strip('@')
         func_name, args_str = excel_func_str.split('(', 1)
-        params = client.get_function_params(func_name)
         args = args_str.rsplit(')', 1)[0].split(';')
         python_args = []
         for arg in args:
@@ -50,14 +49,25 @@ class FunctionCall:
             else:            
                 python_args.append(arg)  
 
+        params = client.get_function_params(func_name)
         args = {}
         for (param, arg) in zip(params, python_args):
             args[param] = arg
 
         return cls(function=func_name, args=args)
     
+    def add_param_names(self, client):
+        params = client.get_function_params(self.function)
+        args = {}
+        for (param, arg) in zip(params, self.args):
+            args[param] = arg
+        self.args = args
+    
     def __repr__(self):
-        params_str = ',\n\t'.join(f'"{param}": {repr(arg)}' for param, arg in self.args.items())
+        if isinstance(self.args, list):
+            params_str = ',\n\t'.join(repr(arg) for arg in self.args)
+        else:
+            params_str = ',\n\t'.join(f'"{param}": {repr(arg)}' for param, arg in self.args.items())
         return f'''FunctionCall(function="{self.function}", args={{\n\t{params_str}\n}})'''
     
 DEFAULT_CULTURE = {
