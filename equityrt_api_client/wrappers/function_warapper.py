@@ -44,8 +44,8 @@ class FunctionWrapper:
             FunctionCall(function="RasDaily", args={"ticker": "PKN:PL", "date": "2024-09-30", "price_type": "CLOSE", "price_source": "DEFAULT", "additional_params": "", "version": 1}),
         ]
         output: [
-            [123.45],
-            [123.45],
+            123.45,
+            123.45
         ]
         '''
         formated_functions = []
@@ -74,11 +74,8 @@ class FunctionWrapper:
 
         results = []
         for function_result in sorted_function_results:
-            function_results = function_result.get("V", [])
-            if not type(function_results) == list:
-                function_results = [function_results]
             results.append(
-                [next(iter(v.values()), None) for v in function_results],
+                next(iter(function_result.get("V", []).values()), None),
             )
 
         return results
