@@ -6,6 +6,7 @@ from typing import Any, Iterable
 from urllib import error, request
 
 from .wrappers.function_warapper import FunctionWrapper
+from .wrappers.helpers import HellperWrapper
 
 
 DEFAULT_BASE_URLS = [
@@ -25,7 +26,7 @@ class AttemptError:
     message: str
 
 
-class EquityRTClient(FunctionWrapper):
+class EquityRTClient(FunctionWrapper, HellperWrapper):
     def __init__(
         self,
         token: str | None = None,
@@ -47,8 +48,15 @@ class EquityRTClient(FunctionWrapper):
         return self._post_jcontent(
             "/excel/dataservice/Connector.svc/json/Echo", payload, extra_headers=headers
         )
+    
+    add_in_info = None
 
-    def add_in(self, version: str, token: str | None = None) -> Any:
+    def cached_add_in(self, version: str = "2.6.5.471", token: str | None = None) -> Any:
+        if self.add_in_info is None:
+            self.add_in_info = self.add_in(version, token)
+        return self.add_in_info
+
+    def add_in(self, version: str = "2.6.5.471", token: str | None = None) -> Any:
         '''Information about available functions and their parameters for given version'''
         payload = {"Version": version, "Token": token or self._require_token()}
         return self._post_jcontent("/excel/dataservice/Connector.svc/json/AddIn", payload)

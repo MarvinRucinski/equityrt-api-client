@@ -30,6 +30,36 @@ class FunctionCall:
 
         return formatted_args
     
+    @classmethod
+    def from_excel_function(cls, client, excel_func_str: str):
+        excel_func_str = excel_func_str.lstrip('=').lstrip('+').strip('@')
+        func_name, args_str = excel_func_str.split('(', 1)
+        params = client.get_function_params(func_name)
+        args = args_str.rsplit(')', 1)[0].split(';')
+        python_args = []
+        for arg in args:
+            arg = arg.strip()
+            if arg.startswith('"') and arg.endswith('"'):
+                python_args.append(arg[1:-1])
+            elif arg.replace('.', '', 1).isdigit():
+                python_args.append(float(arg))
+            elif arg.lower() in ['true', 'false']:
+                python_args.append(arg.lower() == 'true')
+            elif arg == '':
+                python_args.append(None)
+            else:            
+                python_args.append(arg)  
+
+        args = {}
+        for (param, arg) in zip(params, python_args):
+            args[param] = arg
+
+        return cls(function=func_name, args=args)
+    
+    def __repr__(self):
+        params_str = ',\n\t'.join(f'"{param}": {repr(arg)}' for param, arg in self.args.items())
+        return f'''FunctionCall(function="{self.function}", args={{\n\t{params_str}\n}})'''
+    
 DEFAULT_CULTURE = {
     "DatePattern": "d.MM.yyyy",
     "DecimalSeparator": ",",
