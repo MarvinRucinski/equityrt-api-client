@@ -8,7 +8,7 @@ from typing import Sequence
 from dotenv import load_dotenv
 
 from .client import EquityRTClient
-from .wrappers.function_warapper import FunctionCall
+from .wrappers.function_wrapper import FunctionCall
 
 
 def _extract_first_formula(populate_formula_grid_result: dict[str, object]) -> str | None:

@@ -8,7 +8,7 @@ from typing import Any, Iterable
 from urllib import error, request
 
 from .wrappers.function_search import FunctionSearchMixin
-from .wrappers.function_warapper import FunctionWrapper
+from .wrappers.function_wrapper import FunctionWrapper
 from .wrappers.helpers import HellperWrapper
 
 
