@@ -163,7 +163,7 @@ class FunctionWrapper:
         results = []
         for function_result in sorted_function_results:
             results.append(
-                next(iter(function_result.get("V", []).values()), None),
+                next(iter(function_result.get("V", []).values()), None) or None,
             )
 
         return results
