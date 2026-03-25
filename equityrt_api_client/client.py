@@ -1,6 +1,8 @@
 from __future__ import annotations
 
 import json
+import logging
+import socket
 from dataclasses import dataclass
 from typing import Any, Iterable
 from urllib import error, request
@@ -15,6 +17,9 @@ DEFAULT_BASE_URLS = [
     "https://webstation-datagate2.equityrt.com",
     "https://webstation-datagate3.equityrt.com",
 ]
+
+
+logger = logging.getLogger(__name__)
 
 
 class EquityRTApiError(RuntimeError):
@@ -272,11 +277,14 @@ class EquityRTClient(FunctionSearchMixin, FunctionWrapper, HellperWrapper):
                     AttemptError(base_url, f"HTTP {exc.code} {exc.reason}: {detail}")
                 )
             except error.URLError as exc:
-                attempt_errors.append(AttemptError(base_url, f"Connection error: {exc.reason}"))
+                if isinstance(exc.reason, socket.timeout):
+                    attempt_errors.append(AttemptError(base_url, "Timeout"))
+                else:
+                    attempt_errors.append(AttemptError(base_url, f"Connection error: {exc.reason}"))
             except TimeoutError:
                 attempt_errors.append(AttemptError(base_url, "Timeout"))
 
-            print(f"Request to {base_url} failed: {attempt_errors[-1].message}")  # Debug log
+            logger.warning("Request to %s failed: %s", base_url, attempt_errors[-1].message)
 
         reasons = " | ".join(f"{e.base_url}: {e.message}" for e in attempt_errors)
         raise EquityRTApiError(f"All datagates failed for {path}. {reasons}")
