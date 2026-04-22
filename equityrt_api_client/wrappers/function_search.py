@@ -24,6 +24,7 @@ class FunctionSearchMixin:
 		- Type text to edit query
 		- Enter to search (if query changed) or select highlighted result
 		- Up/Down arrows to select result
+		- F2 to change SourceCode (for example: PL -> US)
 		- Ctrl+S or F5 as optional search shortcuts
 		- Esc or q to exit without selection
 		"""
@@ -33,10 +34,12 @@ class FunctionSearchMixin:
 		min_query_len = max(0, min_query_len)
 
 		query = initial_text
+		active_source_code = source_code
 		selected_idx = 0
 		displayed_items: list[dict[str, Any]] = []
 		status = "Type query and press Enter to search."
 		last_loaded_query: str | None = None
+		last_loaded_source_code: str | None = None
 
 		def request_with_token_refresh(
 			request_fn: Callable[[str | None], Any],
@@ -65,7 +68,7 @@ class FunctionSearchMixin:
 				response = request_with_token_refresh(
 					lambda auth_token: self.function_list_search_field(
 						text=query,
-						source_code=source_code,
+						source_code=active_source_code,
 						token=auth_token,
 					),
 					token,
@@ -88,8 +91,8 @@ class FunctionSearchMixin:
 			height, width = stdscr.getmaxyx()
 
 			stdscr.addnstr(0, 0, "EquityRT Function Search", width - 1)
-			stdscr.addnstr(1, 0, "Type query | Enter search/select | ↑/↓ move | Esc quit", width - 1)
-			stdscr.addnstr(2, 0, f"Source: {source_code} | GridType: {grid_type}", width - 1)
+			stdscr.addnstr(1, 0, "Type query | Enter search/select | ↑/↓ move | F2 source | Esc quit", width - 1)
+			stdscr.addnstr(2, 0, f"Source: {active_source_code} | GridType: {grid_type}", width - 1)
 			stdscr.addnstr(3, 0, f"> {query}", width - 1)
 			stdscr.addnstr(4, 0, status, width - 1)
 
@@ -116,10 +119,47 @@ class FunctionSearchMixin:
 			stdscr.refresh()
 
 		def event_loop(stdscr: Any) -> dict[str, Any] | None:
-			nonlocal query, selected_idx, displayed_items, status, last_loaded_query
+			nonlocal query, active_source_code, selected_idx, displayed_items, status
+			nonlocal last_loaded_query, last_loaded_source_code
+
+			def change_source_code() -> None:
+				nonlocal active_source_code, status, last_loaded_source_code
+				prompt = "New SourceCode (for example: PL, US, DE): "
+				height, width = stdscr.getmaxyx()
+				line = min(height - 1, 5)
+				stdscr.move(line, 0)
+				stdscr.clrtoeol()
+				stdscr.addnstr(line, 0, prompt, width - 1)
+				stdscr.refresh()
+
+				# Temporarily switch to blocking input for a reliable prompt experience.
+				stdscr.timeout(-1)
+				curses.echo()
+				try:
+					raw_value = stdscr.getstr(
+						line,
+						min(len(prompt), max(0, width - 1)),
+						16,
+					)
+				finally:
+					curses.noecho()
+					stdscr.timeout(80)
+
+				new_value = raw_value.decode("utf-8", errors="ignore").strip().upper()
+				if not new_value:
+					status = "Source unchanged."
+					return
+
+				if new_value == active_source_code:
+					status = f"Source already set to {active_source_code}."
+					return
+
+				active_source_code = new_value
+				last_loaded_source_code = None
+				status = f"Source changed to {active_source_code}. Press Enter to search."
 
 			def run_search() -> None:
-				nonlocal displayed_items, status, selected_idx, last_loaded_query
+				nonlocal displayed_items, status, selected_idx, last_loaded_query, last_loaded_source_code
 				if len(query) < min_query_len:
 					status = f"Type at least {min_query_len} character(s)."
 					return
@@ -129,6 +169,7 @@ class FunctionSearchMixin:
 				displayed_items, status = load_items()
 				selected_idx = 0 if displayed_items else 0
 				last_loaded_query = query
+				last_loaded_source_code = active_source_code
 
 			try:
 				curses.curs_set(1)
@@ -149,7 +190,7 @@ class FunctionSearchMixin:
 						return None
 
 					if key in ("\n", "\r"):
-						if query != last_loaded_query:
+						if query != last_loaded_query or active_source_code != last_loaded_source_code:
 							run_search()
 							continue
 
@@ -172,7 +213,7 @@ class FunctionSearchMixin:
 							grid_result = request_with_token_refresh(
 								lambda auth_token: self.populate_formula_grid(
 									formula_object_id=formula_object_id,
-									source_code=source_code,
+									source_code=active_source_code,
 									grid_type=grid_type,
 									token=auth_token,
 								),
@@ -183,6 +224,7 @@ class FunctionSearchMixin:
 							continue
 						return {
 							"query": query,
+							"source_code": active_source_code,
 							"selected": selected_item,
 							"formula_object_id": formula_object_id,
 							"populate_formula_grid": grid_result,
@@ -221,6 +263,10 @@ class FunctionSearchMixin:
 
 				if key == curses.KEY_F5:
 					run_search()
+					continue
+
+				if key == curses.KEY_F2:
+					change_source_code()
 					continue
 
 				if key in (curses.KEY_BACKSPACE,):
