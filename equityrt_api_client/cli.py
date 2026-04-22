@@ -70,8 +70,8 @@ def _build_parser() -> argparse.ArgumentParser:
     parser.add_argument(
         "--max-results",
         type=int,
-        default=12,
-        help="Maximum number of displayed results (default: 12).",
+        default=120,
+        help="Maximum number of displayed results (default: 120).",
     )
     parser.add_argument(
         "--min-query-len",
@@ -129,8 +129,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return 0
 
-    print(f"Selected function: {result['selected']['text']}")
-    print(f"Description: {result['selected'].get('description', 'No description')}")
+    selected = result['selected']
+    # Prefer a full display/path if available (tree results provide _display/_path)
+    full_name = (
+        selected.get("_display")
+        or selected.get("_path")
+        or selected.get("text")
+        or ""
+    )
+    print(f"Selected function: {selected.get('text', '')}")
+    print(f"Full name: {full_name}")
+    print(f"Description: {selected.get('description', 'No description')}")
     grid_result = result["populate_formula_grid"]
     if not isinstance(grid_result, dict):
         print("PopulateFormulaGrid result is not a JSON object.")

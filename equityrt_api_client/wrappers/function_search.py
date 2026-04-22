@@ -84,7 +84,8 @@ class FunctionSearchMixin:
 			extracted = self._extract_function_items(response)
 			if not extracted:
 				return [], "No matching functions."
-			return extracted[:max_results], f"{len(extracted)} result(s)."
+			# Keep all extracted items so user can scroll through them with arrows
+			return extracted, f"{len(extracted)} result(s)."
 
 		def render(stdscr: Any) -> None:
 			stdscr.erase()
@@ -98,10 +99,24 @@ class FunctionSearchMixin:
 
 			description_start = max(6, height - 3)
 			visible_rows = max(0, description_start - 6)
-			for idx, item in enumerate(displayed_items[:visible_rows]):
+			# Determine window of items to display so user can scroll through full list
+			window_start = 0
+			if visible_rows > 0 and displayed_items:
+				# compute a safe local selected index (don't assign to outer scope)
+				sel = selected_idx
+				if sel < 0:
+					sel = 0
+				if sel >= len(displayed_items):
+					sel = len(displayed_items) - 1
+				if sel >= visible_rows:
+					window_start = sel - visible_rows + 1
+				# cap window_start so we don't go past the end
+				window_start = min(window_start, max(0, len(displayed_items) - visible_rows))
+			for idx, item in enumerate(displayed_items[window_start: window_start + visible_rows]):
 				display = str(item.get("_display") or item.get("text") or "")
 				line = display
-				attr = curses.A_REVERSE if idx == selected_idx else curses.A_NORMAL
+				actual_idx = window_start + idx
+				attr = curses.A_REVERSE if actual_idx == sel else curses.A_NORMAL
 				stdscr.addnstr(6 + idx, 0, line, width - 1, attr)
 
 			description = ""
